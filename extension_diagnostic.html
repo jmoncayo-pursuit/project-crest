@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Crest Extension Diagnostic</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+
+        .step {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+            border-left: 4px solid #007cba;
+        }
+
+        .error {
+            border-left-color: #dc3545;
+            background: #fff5f5;
+        }
+
+        .success {
+            border-left-color: #28a745;
+            background: #f8fff8;
+        }
+
+        .warning {
+            border-left-color: #ffc107;
+            background: #fffdf5;
+        }
+
+        code {
+            background: #f8f9fa;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+        }
+
+        button {
+            background: #007cba;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .console {
+            background: #000;
+            color: #0f0;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔧 Crest Extension Diagnostic Tool</h1>
+
+    <div class="step">
+        <h3>Step 1: Extension Status Check</h3>
+        <p>First, check if your extension is properly loaded:</p>
+        <ol>
+            <li>Go to <code>chrome://extensions/</code></li>
+            <li>Find "Project Crest"</li>
+            <li>Make sure it's <strong>ENABLED</strong> (blue toggle)</li>
+            <li>Click the <strong>reload button (↻)</strong></li>
+            <li>Check that it shows <code>content-script-audio.js</code> in the files</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Test Extension Loading</h3>
+        <p>Go to any YouTube video and run this test:</p>
+        <button onclick="copyToClipboard(testScript1)">Copy Test Script</button>
+        <div class="console" id="test1">
+            // Paste this in YouTube console (F12 → Console)
+            console.log("=== EXTENSION LOADING TEST ===");
+            console.log("URL:", window.location.href);
+            console.log("Is YouTube watch page:", window.location.href.includes('youtube.com/watch'));
+            console.log("Chrome runtime available:", typeof chrome !== 'undefined' && !!chrome.runtime);
+            console.log("Crest notification element:", !!document.getElementById('crest-notification'));
+
+            // Look for Crest console messages
+            console.log("Check console history above for 'Crest Audio Agent: Script Injected'");
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Force Content Script Injection</h3>
+        <p>If Step 2 shows the extension isn't loaded, try this:</p>
+        <button onclick="copyToClipboard(testScript2)">Copy Force Injection Script</button>
+        <div class="console" id="test2">
+            // This manually injects the content script (for testing only)
+            // Paste in YouTube console
+            if (typeof chrome !== 'undefined' && chrome.runtime) {
+            console.log("✅ Chrome runtime available");
+
+            // Check if content script is already loaded
+            if (document.getElementById('crest-notification')) {
+            console.log("✅ Content script already loaded");
+            } else {
+            console.log("❌ Content script not loaded");
+            console.log("💡 Try reloading the extension at chrome://extensions/");
+            }
+            } else {
+            console.log("❌ Chrome runtime not available");
+            console.log("💡 Extension is not loaded on this page");
+            }
+        </div>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Manual Volume Test</h3>
+        <p>Test if basic volume control works:</p>
+        <button onclick="copyToClipboard(testScript3)">Copy Volume Test Script</button>
+        <div class="console" id="test3">
+            // Test basic video volume control
+            // Paste in YouTube console
+            const video = document.querySelector('video');
+            if (video) {
+            console.log("✅ Video element found");
+            console.log("Current volume:", video.volume);
+
+            const originalVolume = video.volume;
+
+            // Test volume change
+            video.volume = 0.2;
+            console.log("Volume set to:", video.volume);
+
+            setTimeout(() => {
+            video.volume = originalVolume;
+            console.log("Volume restored to:", originalVolume);
+            console.log("🎉 Basic volume control works!");
+            }, 2000);
+            } else {
+            console.log("❌ No video element found");
+            }
+        </div>
+    </div>
+
+    <div class="step warning">
+        <h3>⚠️ Common Issues</h3>
+        <ul>
+            <li><strong>Extension not reloaded:</strong> Always click reload (↻) after making changes</li>
+            <li><strong>Wrong YouTube URL:</strong> Make sure you're on a <code>/watch?v=</code> URL</li>
+            <li><strong>Extension disabled:</strong> Check the toggle is blue/on</li>
+            <li><strong>Permissions denied:</strong> Extension needs YouTube access</li>
+        </ul>
+    </div>
+
+    <div class="step success">
+        <h3>✅ Success Indicators</h3>
+        <p>When working correctly, you should see in YouTube console:</p>
+        <ul>
+            <li><code>Crest Audio Agent: Script Injected</code></li>
+            <li><code>Crest Audio Agent: Initializing...</code></li>
+            <li><code>Crest Audio Agent: Waiting for user interaction...</code></li>
+            <li><code>chrome.runtime</code> should be defined</li>
+            <li>Notification element should exist</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h3>🚀 Quick Fix Checklist</h3>
+        <ol>
+            <li>✅ Go to <code>chrome://extensions/</code></li>
+            <li>✅ Find "Project Crest" extension</li>
+            <li>✅ Make sure it's ENABLED</li>
+            <li>✅ Click reload button (↻)</li>
+            <li>✅ Go to YouTube video page</li>
+            <li>✅ Press F12 → Console</li>
+            <li>✅ Look for "Crest Audio Agent: Script Injected"</li>
+            <li>✅ Run test scripts above</li>
+        </ol>
+    </div>
+
+    <script>
+        const testScript1 = `// Paste this in YouTube console (F12 → Console)
+console.log("=== EXTENSION LOADING TEST ===");
+console.log("URL:", window.location.href);
+console.log("Is YouTube watch page:", window.location.href.includes('youtube.com/watch'));
+console.log("Chrome runtime available:", typeof chrome !== 'undefined' && !!chrome.runtime);
+console.log("Crest notification element:", !!document.getElementById('crest-notification'));
+
+// Look for Crest console messages
+console.log("Check console history above for 'Crest Audio Agent: Script Injected'");`;
+
+        const testScript2 = `// This manually checks content script status
+// Paste in YouTube console
+if (typeof chrome !== 'undefined' && chrome.runtime) {
+    console.log("✅ Chrome runtime available");
+    
+    // Check if content script is already loaded
+    if (document.getElementById('crest-notification')) {
+        console.log("✅ Content script already loaded");
+    } else {
+        console.log("❌ Content script not loaded");
+        console.log("💡 Try reloading the extension at chrome://extensions/");
+    }
+} else {
+    console.log("❌ Chrome runtime not available");
+    console.log("💡 Extension is not loaded on this page");
+}`;
+
+        const testScript3 = `// Test basic video volume control
+// Paste in YouTube console
+const video = document.querySelector('video');
+if (video) {
+    console.log("✅ Video element found");
+    console.log("Current volume:", video.volume);
+    
+    const originalVolume = video.volume;
+    
+    // Test volume change
+    video.volume = 0.2;
+    console.log("Volume set to:", video.volume);
+    
+    setTimeout(() => {
+        video.volume = originalVolume;
+        console.log("Volume restored to:", originalVolume);
+        console.log("🎉 Basic volume control works!");
+    }, 2000);
+} else {
+    console.log("❌ No video element found");
+}`;
+
+        function copyToClipboard(text) {
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Script copied to clipboard! Paste it in YouTube console.');
+            });
+        }
+    </script>
+</body>
+
+</html>

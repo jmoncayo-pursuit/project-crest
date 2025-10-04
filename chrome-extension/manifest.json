@@ -1,0 +1,50 @@
+{
+    "manifest_version": 3,
+    "name": "Project Crest",
+    "version": "1.0",
+    "description": "AI-powered volume control for browser media. Automatically detects loud audio events from subtitles and preemptively adjusts volume for a consistent listening experience.",
+    "background": {
+        "service_worker": "service_worker.js"
+    },
+    "permissions": [
+        "scripting",
+        "webNavigation",
+        "storage",
+        "tabs"
+    ],
+    "host_permissions": [
+        "*://*.youtube.com/*",
+        "http://localhost:5003/*"
+    ],
+    "action": {
+        "default_title": "Crest",
+        "default_popup": "popup.html",
+        "default_icon": {
+            "128": "icons/crest-inactive.png"
+        }
+    },
+    "icons": {
+        "128": "icons/crest-inactive.png"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "*://*.youtube.com/watch*"
+            ],
+            "js": [
+                "content-script-working.js"
+            ],
+            "run_at": "document_end"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "notification.css"
+            ],
+            "matches": [
+                "*://*.youtube.com/*"
+            ]
+        }
+    ]
+}
