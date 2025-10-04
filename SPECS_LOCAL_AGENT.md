@@ -6,7 +6,7 @@ This file contains the detailed technical specifications for the local Python se
 ## 1\. Framework & Orchestration
 
   - The server will be a **Flask** web application.[14, 15, 16]
-  - The entire application will be orchestrated and run by **OpenHands**.[17, 18, 19]
+  - The entire application will be built using **Kiro IDE** with AI assistance.[17, 18, 19]
 
 ## 2\. Project Setup (`requirements.txt`)
 

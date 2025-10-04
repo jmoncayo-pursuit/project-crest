@@ -25,7 +25,7 @@ This document outlines the Minimum Viable Product (MVP) requirements for Project
 
 1. WHEN making AI requests THEN the Flask server SHALL route all OpenAI API calls through the TrueFoundry AI Gateway using their base_url and API key
 2. WHEN processing subtitle text THEN the server SHALL call OpenAI via the gateway asking for a simple "YES" or "NO" decision on whether it constitutes a loud event
-3. WHEN running the server THEN it SHALL be orchestrated via the OpenHands agent framework
+3. WHEN running the server THEN it SHALL be built and managed via AI-assisted development
 4. WHEN preprocessing is needed THEN the server SHOULD use Structify to clean subtitle text before sending to OpenAI (stretch goal)
 
 ### Requirement 3: "Production-Ready" Observability Demo

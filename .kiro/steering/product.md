@@ -12,7 +12,7 @@ Users watching YouTube videos with dynamic audio (action movies, gaming content,
 
 ## Hackathon Context
 Built for NYC AI Agents Hackathon to demonstrate integration of sponsor technologies:
-- OpenHands (agent orchestration)
+- Kiro IDE (AI-assisted development)
 - Structify (data processing) 
 - OpenAI (AI reasoning)
 - TrueFoundry AI Gateway (API management)

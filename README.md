@@ -141,10 +141,18 @@ The Chrome extension includes a comprehensive dashboard accessible by clicking t
 ## 🏆 Hackathon Context
 
 Built for NYC AI Agents Hackathon showcasing:
+- **Kiro IDE**: AI-assisted development environment
 - **OpenAI**: Intelligent loud event detection
 - **TrueFoundry**: AI Gateway for API management  
 - **Datadog**: Complete observability and monitoring
 - **Chrome Extensions**: Real-time browser integration
+
+### 🤖 AI-Assisted Development
+This entire project was built using Kiro IDE's AI assistance, demonstrating:
+- **Rapid prototyping** from concept to working system
+- **Production-ready architecture** with full observability
+- **Complex integration** of multiple sponsor technologies
+- **End-to-end testing** and debugging capabilities
 
 ## 📊 Metrics & Observability
 

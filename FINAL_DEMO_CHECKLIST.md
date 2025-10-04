@@ -80,7 +80,7 @@ python test_integration.py
 - [ ] Error metrics tracked for failures
 
 ### Integration Points
-- [ ] **OpenHands**: Agent orchestration (this implementation)
+- [ ] **Kiro IDE**: AI-assisted development environment (this implementation)
 - [ ] **TrueFoundry**: AI Gateway for OpenAI calls
 - [ ] **OpenAI**: GPT analysis of subtitle text
 - [ ] **Datadog**: Full observability stack
