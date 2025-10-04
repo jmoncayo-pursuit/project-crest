@@ -9,12 +9,12 @@ let analyser = null;
 let audioSource = null;
 let isMonitoring = false;
 
-// Audio analysis parameters
-const LOUD_THRESHOLD = 0.3; // Volume threshold for loud events (0-1) - lowered for better detection
-const ANALYSIS_INTERVAL = 100; // Check audio every 100ms
-const VOLUME_REDUCTION_DURATION = 3000; // 3 seconds
+// Audio analysis parameters - SUPER SENSITIVE FOR TESTING
+const LOUD_THRESHOLD = 0.05; // VERY LOW - detect almost any sound
+const ANALYSIS_INTERVAL = 500; // Check every 500ms (slower for testing)
+const VOLUME_REDUCTION_DURATION = 2000; // 2 seconds
 let lastLoudEventTime = 0;
-let baselineVolume = 0.1; // Track normal volume levels - start lower
+let baselineVolume = 0.02; // Very low baseline
 
 // --- ENHANCED: Real-time audio monitoring ---
 function initializeAudioMonitoring() {
@@ -102,19 +102,17 @@ function startAudioAnalysis() {
         const volumeSpike = averageVolume - baselineVolume;
         const now = Date.now();
 
-        // Log audio levels for debugging (every 2 seconds)
-        if (now % 2000 < ANALYSIS_INTERVAL) {
-            console.log(`Crest Audio Agent: Audio levels - Volume: ${averageVolume.toFixed(3)}, Baseline: ${baselineVolume.toFixed(3)}, Spike: ${volumeSpike.toFixed(3)}`);
-        }
+        // Log audio levels for debugging (every analysis)
+        console.log(`🎵 Crest: Vol=${averageVolume.toFixed(3)}, Base=${baselineVolume.toFixed(3)}, Spike=${volumeSpike.toFixed(3)}, Loud=${isLoudEvent}`);
 
-        // More sensitive detection with multiple conditions
+        // SUPER SENSITIVE - detect almost any audio
         const isLoudEvent = (
-            (volumeSpike > LOUD_THRESHOLD) || // Spike above threshold
-            (averageVolume > 0.6 && volumeSpike > 0.15) || // High volume with medium spike
-            (averageVolume > 0.8) // Very high absolute volume
+            (volumeSpike > LOUD_THRESHOLD) || // Very low threshold
+            (averageVolume > 0.1) || // Any volume above 10%
+            (volumeSpike > 0.02) // Any spike above 2%
         );
 
-        if (isLoudEvent && (now - lastLoudEventTime) > 1500) { // Reduced cooldown
+        if (isLoudEvent && (now - lastLoudEventTime) > 3000) { // 3 second cooldown for testing
             console.log(`🔊 Crest Audio Agent: LOUD EVENT DETECTED! Volume: ${averageVolume.toFixed(3)}, Baseline: ${baselineVolume.toFixed(3)}, Spike: ${volumeSpike.toFixed(3)}`);
 
             // Send to AI for confirmation

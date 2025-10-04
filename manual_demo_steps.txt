@@ -1,0 +1,40 @@
+MANUAL CREST DEMO - Type these commands one by one in YouTube console:
+
+1. First, check if video exists:
+   const video = document.querySelector('video');
+   console.log('Video found:', !!video);
+
+2. Check current volume:
+   console.log('Current volume:', Math.round(video.volume * 100) + '%');
+
+3. Store original volume:
+   const originalVolume = video.volume;
+
+4. Create visual indicator:
+   const demo = document.createElement('div');
+   demo.style.cssText = 'position:fixed;top:20px;right:20px;background:black;color:white;padding:20px;font-size:20px;z-index:999999;border:3px solid red;';
+   demo.textContent = '🎵 CREST AI MONITORING';
+   document.body.appendChild(demo);
+
+5. Simulate loud event detection:
+   demo.textContent = '🚨 LOUD EVENT DETECTED!';
+   demo.style.borderColor = 'red';
+
+6. Lower the volume:
+   video.volume = 0.25;
+   demo.textContent = '🔉 VOLUME LOWERED TO ' + Math.round(video.volume * 100) + '%';
+   demo.style.borderColor = 'orange';
+
+7. Wait a few seconds, then restore:
+   setTimeout(() => {
+     video.volume = originalVolume;
+     demo.textContent = '✅ VOLUME RESTORED TO ' + Math.round(video.volume * 100) + '%';
+     demo.style.borderColor = 'green';
+   }, 3000);
+
+8. Clean up:
+   setTimeout(() => demo.remove(), 6000);
+
+ALTERNATIVE - Just test volume control directly:
+video.volume = 0.2;  // Lower volume
+video.volume = 0.8;  // Raise volume

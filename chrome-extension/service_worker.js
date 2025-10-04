@@ -1,9 +1,23 @@
 // service-worker.js
 
-// Icon state management
+// Icon state management - using simple colored squares as fallback
 const IconState = {
-    DEFAULT: "icons/crest-inactive.png",
-    ACTIVE: "icons/crest-active.png"
+    DEFAULT: {
+        "128": "data:image/svg+xml;base64," + btoa(`
+            <svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+                <rect width="128" height="128" rx="20" fill="#6c757d"/>
+                <text x="64" y="80" text-anchor="middle" fill="white" font-size="48" font-family="Arial">C</text>
+            </svg>
+        `)
+    },
+    ACTIVE: {
+        "128": "data:image/svg+xml;base64," + btoa(`
+            <svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
+                <rect width="128" height="128" rx="20" fill="#28a745"/>
+                <text x="64" y="80" text-anchor="middle" fill="white" font-size="48" font-family="Arial">C</text>
+            </svg>
+        `)
+    }
 };
 
 // Track active tabs for icon management
@@ -13,7 +27,7 @@ chrome.webNavigation.onHistoryStateUpdated.addListener((details) => {
     if (details.url?.includes("youtube.com/watch")) {
         chrome.scripting.executeScript({
             target: { tabId: details.tabId },
-            files: ["content-script-audio.js"]
+            files: ["content-script-simple-working.js"]
         });
     }
 });
@@ -78,6 +92,19 @@ chrome.runtime.onMessage.addListener((message, sender) => {
                 console.error('Crest Error:', err);
                 broadcastLogEvent(`Error: ${err.message}`);
             });
+    }
+    // Handle volume lowering from simple script
+    else if (message.type === 'VOLUME_LOWERED') {
+        console.log('Crest: Volume lowered by agent', message.data);
+
+        setIconActive(sender.tab.id);
+
+        const duration = message.data.duration || 3000;
+        setTimeout(() => {
+            setIconDefault(sender.tab.id);
+        }, duration + 500);
+
+        broadcastLogEvent(`🎵 Agent lowered volume to ${message.data.level}% for ${duration / 1000}s`);
     }
     // --- NEW: Handle user correction feedback ---
     else if (message.type === 'USER_CORRECTION') {

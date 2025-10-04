@@ -28,8 +28,10 @@ python app.py
 ### 3. Test on YouTube
 1. Go to any YouTube video
 2. The extension will automatically start monitoring
-3. Look for "Crest Audio Agent" messages in browser console (F12)
-4. Loud events will trigger automatic volume reduction
+3. **Watch the extension icon** - it turns green when actively managing volume
+4. **Click the extension icon** to see the live activity dashboard
+5. Look for "Crest Audio Agent" messages in browser console (F12)
+6. Loud events will trigger automatic volume reduction
 
 ## 🏗️ Architecture
 
@@ -99,17 +101,36 @@ python test_server.py
 - **Real-time Audio Analysis**: Monitors audio levels and detects sudden spikes
 - **AI-Enhanced Detection**: Uses OpenAI to confirm loud events intelligently
 - **Proactive Volume Control**: Adjusts volume before loud moments occur
+- **Visual Dashboard**: Extension popup shows live activity log and statistics
+- **Smart Icon Feedback**: Extension icon changes color when actively managing volume
 - **User Learning**: Tracks user corrections to improve accuracy
-- **Visual Feedback**: Shows notifications when volume is adjusted
 - **Production Ready**: Full observability with Datadog integration
+
+## 🎛️ Extension Dashboard
+
+The Chrome extension includes a comprehensive dashboard accessible by clicking the extension icon:
+
+### Features:
+- **Live Activity Log**: Real-time feed of all agent actions
+- **Statistics**: Volume adjustment count and last action timestamp
+- **Status Indicator**: Shows when agent is actively monitoring vs. managing volume
+- **Visual Feedback**: Extension icon changes from gray (monitoring) to green (active)
+- **Persistent History**: Activity log saved between browser sessions
+
+### Dashboard Shows:
+- `🎵 Agent lowered volume to 25% for 3s`
+- `🔊 Audio spike detected! Volume lowered to 25%`
+- Timestamps and detailed action history
+- Performance statistics for demo purposes
 
 ## 🔍 Troubleshooting
 
 ### Extension Not Working
 1. Check if server is running on port 5003
 2. Verify extension is loaded and enabled
-3. Check browser console for error messages
-4. Ensure YouTube has subtitles enabled
+3. **Check extension dashboard** for activity logs
+4. Look for icon color changes (gray → green)
+5. Check browser console for error messages
 
 ### Server Issues
 1. Check port 5003 isn't in use: `lsof -i :5003`
