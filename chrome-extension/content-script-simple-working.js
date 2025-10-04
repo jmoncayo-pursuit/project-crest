@@ -110,24 +110,45 @@ function startFallbackMonitoring() {
     const video = document.querySelector('video');
     if (!video) return;
 
-    // Monitor video events
+    let hasTriggeredOnPlay = false;
+    let lastVolumeCheck = 0;
+
+    // Monitor video events - trigger once when video starts
     video.addEventListener('play', () => {
-        console.log("▶️ Video started playing - simulating audio detection");
-        setTimeout(() => {
-            console.log("🚨 SIMULATED AUDIO SPIKE - LOWERING VOLUME");
-            lowerVolume();
-        }, 2000);
+        if (!hasTriggeredOnPlay) {
+            console.log("▶️ Video started playing - simulating audio detection");
+            setTimeout(() => {
+                console.log("🚨 SIMULATED AUDIO SPIKE - LOWERING VOLUME");
+                lowerVolume();
+                hasTriggeredOnPlay = true;
+            }, 3000); // Wait 3 seconds after play
+        }
     });
 
-    // Also trigger on volume changes (user interaction)
+    // Trigger on volume changes (user interaction)
     video.addEventListener('volumechange', () => {
-        if (video.volume > 0.5) {
+        const now = Date.now();
+        if (video.volume > 0.5 && (now - lastVolumeCheck) > 5000) {
             console.log("🔊 High volume detected - simulating loud event");
             setTimeout(() => {
                 lowerVolume();
+                lastVolumeCheck = now;
             }, 1000);
         }
     });
+
+    // Periodic monitoring - check every 10 seconds for demo
+    setInterval(() => {
+        if (!video.paused && video.volume > 0.3) {
+            const now = Date.now();
+            if ((now - lastVolumeChange) > 15000) { // 15 seconds between auto-triggers
+                console.log("🤖 Periodic agent check - simulating loud event detection");
+                lowerVolume();
+            }
+        }
+    }, 10000);
+
+    console.log("✅ Fallback monitoring active - will trigger on play, volume changes, and periodically");
 }
 
 function lowerVolume() {
@@ -196,11 +217,42 @@ function showNotification(message) {
     }, 4000);
 }
 
+// Add monitoring indicator
+function showMonitoringStatus() {
+    const indicator = document.createElement('div');
+    indicator.id = 'crest-monitoring-indicator';
+    indicator.textContent = '🎵 Crest AI Agent: Monitoring';
+    indicator.style.cssText = `
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        padding: 8px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        z-index: 999999;
+        font-family: Arial, sans-serif;
+        opacity: 0.8;
+        pointer-events: none;
+    `;
+    document.body.appendChild(indicator);
+
+    // Pulse effect to show it's active
+    setInterval(() => {
+        indicator.style.opacity = indicator.style.opacity === '0.4' ? '0.8' : '0.4';
+    }, 2000);
+}
+
 // Start monitoring when page loads
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startSimpleMonitoring);
+    document.addEventListener('DOMContentLoaded', () => {
+        startSimpleMonitoring();
+        showMonitoringStatus();
+    });
 } else {
     startSimpleMonitoring();
+    showMonitoringStatus();
 }
 
 // Handle YouTube navigation

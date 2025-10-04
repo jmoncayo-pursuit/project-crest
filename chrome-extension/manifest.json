@@ -32,7 +32,7 @@
                 "*://*.youtube.com/watch*"
             ],
             "js": [
-                "content-script-simple-working.js"
+                "content-script-enhanced.js"
             ],
             "run_at": "document_end"
         }
