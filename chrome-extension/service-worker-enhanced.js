@@ -93,6 +93,16 @@ class DashboardManager {
         }).catch(() => {
             // Popup might not be open, ignore error
         });
+
+        // Also send simple LOG_EVENT for compatibility with basic popup
+        if (event.message) {
+            chrome.runtime.sendMessage({
+                type: 'LOG_EVENT',
+                text: event.message
+            }).catch(() => {
+                // Popup might not be open, ignore error
+            });
+        }
     }
 
     getStats() {
