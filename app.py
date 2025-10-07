@@ -1,11 +1,14 @@
 import os
 import logging
+import hashlib
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from datadog import initialize, statsd
 from pythonjsonlogger import jsonlogger
 import time
 from openai import OpenAI
+from collections import defaultdict
+import threading
 
 # Initialize Datadog
 initialize(
@@ -15,6 +18,110 @@ initialize(
 
 # Initialize OpenAI client lazily to avoid blocking startup
 truefoundry_client = None
+
+# --- CACHING AND PERFORMANCE OPTIMIZATION CLASSES ---
+class DecisionCache:
+    """Cache for AI decisions with TTL support"""
+    def __init__(self, ttl_seconds=30):
+        self.cache = {}
+        self.ttl = ttl_seconds
+        self.lock = threading.Lock()
+    
+    def _generate_key(self, text):
+        """Generate cache key from text"""
+        return hashlib.md5(text.encode('utf-8')).hexdigest()
+    
+    def get_cached_decision(self, text):
+        """Get cached decision if still valid"""
+        key = self._generate_key(text)
+        
+        with self.lock:
+            if key in self.cache:
+                decision, timestamp = self.cache[key]
+                if time.time() - timestamp < self.ttl:
+                    return decision
+                else:
+                    # Expired, remove from cache
+                    del self.cache[key]
+        
+        return None
+    
+    def cache_decision(self, text, decision):
+        """Store decision with current timestamp"""
+        key = self._generate_key(text)
+        
+        with self.lock:
+            self.cache[key] = (decision, time.time())
+            
+            # Cleanup old entries (simple approach)
+            if len(self.cache) > 1000:  # Prevent unlimited growth
+                current_time = time.time()
+                expired_keys = [
+                    k for k, (_, ts) in self.cache.items() 
+                    if current_time - ts >= self.ttl
+                ]
+                for k in expired_keys:
+                    del self.cache[k]
+
+class RequestDeduplicator:
+    """Prevent duplicate simultaneous requests"""
+    def __init__(self):
+        self.pending_requests = {}
+        self.lock = threading.Lock()
+    
+    def is_duplicate(self, request_key):
+        """Check if request is already being processed"""
+        with self.lock:
+            return request_key in self.pending_requests
+    
+    def add_request(self, request_key):
+        """Mark request as being processed"""
+        with self.lock:
+            self.pending_requests[request_key] = time.time()
+    
+    def remove_request(self, request_key):
+        """Mark request as completed"""
+        with self.lock:
+            self.pending_requests.pop(request_key, None)
+    
+    def cleanup_stale_requests(self, max_age=10):
+        """Remove requests older than max_age seconds"""
+        current_time = time.time()
+        with self.lock:
+            stale_keys = [
+                k for k, ts in self.pending_requests.items()
+                if current_time - ts > max_age
+            ]
+            for k in stale_keys:
+                del self.pending_requests[k]
+
+class BaselineCache:
+    """Cache baseline values per video"""
+    def __init__(self, ttl_seconds=300):  # 5 minutes
+        self.baselines = {}
+        self.ttl = ttl_seconds
+        self.lock = threading.Lock()
+    
+    def get_baseline(self, video_id):
+        """Get cached baseline for video"""
+        with self.lock:
+            if video_id in self.baselines:
+                baseline, timestamp = self.baselines[video_id]
+                if time.time() - timestamp < self.ttl:
+                    return baseline
+                else:
+                    del self.baselines[video_id]
+        return None
+    
+    def set_baseline(self, video_id, baseline):
+        """Cache baseline for video"""
+        with self.lock:
+            self.baselines[video_id] = (baseline, time.time())
+
+# Initialize caching systems
+decision_cache = DecisionCache(ttl_seconds=30)
+request_deduplicator = RequestDeduplicator()
+baseline_cache = BaselineCache(ttl_seconds=300)
 
 def get_truefoundry_client():
     """Get or create TrueFoundry client on demand"""
@@ -52,10 +159,35 @@ def analyze_subtitle_for_loud_events(subtitle_text):
     """
     Analyze subtitle text to determine if it describes a loud event.
     Returns 'YES' or 'NO' based on AI analysis (Live Mode) or rule-based logic (Mock Mode).
+    Uses caching for performance optimization.
     """
-    # Check if we have credentials to run in "Live Mode"
-    client = get_truefoundry_client()
-    if client and os.getenv("TRUEFOUNDRY_API_KEY"):
+    # Check cache first
+    cached_decision = decision_cache.get_cached_decision(subtitle_text)
+    if cached_decision:
+        logger.info("Using cached decision", extra={
+            'subtitle_text': subtitle_text,
+            'cached_decision': cached_decision
+        })
+        statsd.increment('crest.cache.hit', tags=['type:subtitle'])
+        return cached_decision
+    
+    statsd.increment('crest.cache.miss', tags=['type:subtitle'])
+    
+    # Check for duplicate requests
+    request_key = f"subtitle_{hashlib.md5(subtitle_text.encode()).hexdigest()}"
+    if request_deduplicator.is_duplicate(request_key):
+        logger.info("Duplicate request detected, using fallback", extra={
+            'subtitle_text': subtitle_text
+        })
+        statsd.increment('crest.request.duplicate', tags=['type:subtitle'])
+        return 'NO'  # Safe fallback
+    
+    request_deduplicator.add_request(request_key)
+    
+    try:
+        # Check if we have credentials to run in "Live Mode"
+        client = get_truefoundry_client()
+        if client and os.getenv("TRUEFOUNDRY_API_KEY"):
         # LIVE MODE - Use TrueFoundry AI Gateway
         try:
             logger.info("Running in LIVE mode", extra={
@@ -71,15 +203,27 @@ def analyze_subtitle_for_loud_events(subtitle_text):
             # Create prompt for loud event detection
             prompt = f"Does the following text describe a loud noise: '{subtitle_text}'? Respond only with YES or NO."
             
-            # Call TrueFoundry AI Gateway
-            response = client.chat.completions.create(
-                model="openai-main/gpt-4o-mini",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=10,
-                temperature=0.1
-            )
+            # Call TrueFoundry AI Gateway with timeout
+            import signal
+            
+            def timeout_handler(signum, frame):
+                raise TimeoutError("AI request timeout")
+            
+            # Set timeout for AI request (500ms as per requirements)
+            signal.signal(signal.SIGALRM, timeout_handler)
+            signal.alarm(1)  # 1 second timeout (500ms was too aggressive for API calls)
+            
+            try:
+                response = client.chat.completions.create(
+                    model="openai-main/gpt-4o-mini",
+                    messages=[
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=10,
+                    temperature=0.1
+                )
+            finally:
+                signal.alarm(0)  # Cancel timeout
             
             ai_duration = time.time() - ai_start_time
             
@@ -104,6 +248,9 @@ def analyze_subtitle_for_loud_events(subtitle_text):
             # Record metrics
             statsd.histogram('crest.ai.duration', ai_duration, tags=['provider:truefoundry'])
             statsd.increment(f'crest.openai.decision.{ai_decision.lower()}', tags=['provider:truefoundry'])
+            
+            # Cache the decision
+            decision_cache.cache_decision(subtitle_text, ai_decision)
             
             return ai_decision
             
@@ -156,7 +303,14 @@ def analyze_subtitle_for_loud_events(subtitle_text):
         # Record mock metrics
         statsd.increment(f'crest.mock_decision.{decision.lower()}', tags=['mode:mock'])
         
+        # Cache the decision
+        decision_cache.cache_decision(subtitle_text, decision)
+        
         return decision
+    
+    finally:
+        # Always remove from pending requests
+        request_deduplicator.remove_request(request_key)
 
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
@@ -166,9 +320,17 @@ app.config['DD_SERVICE'] = os.getenv('DD_SERVICE', 'crest-agent')
 app.config['DD_ENV'] = os.getenv('DD_ENV', 'development')
 app.config['DD_VERSION'] = os.getenv('DD_VERSION', '0.1.0')
 
+def cleanup_stale_requests():
+    """Periodic cleanup of stale requests and cache entries"""
+    request_deduplicator.cleanup_stale_requests()
+
 @app.route('/data', methods=['GET', 'POST'])
 def data():
     start_time = time.time()
+    
+    # Periodic cleanup (every 10th request approximately)
+    if hash(str(time.time())) % 10 == 0:
+        cleanup_stale_requests()
     
     # Log request
     logger.info("Processing /data request", extra={
@@ -305,24 +467,37 @@ def handle_audio_data():
             'analysis_type': 'real_time_audio'
         })
         
-        # AI-enhanced audio analysis
-        ai_decision = analyze_audio_for_loud_events(volume, baseline, spike)
+        # Enhanced AI audio analysis with confidence
+        ai_decision, confidence = analyze_audio_for_loud_events(volume, baseline, spike)
         
         if ai_decision == 'YES':
-            logger.info("Loud audio event confirmed by AI", extra={
+            logger.info("Loud audio event confirmed by enhanced AI", extra={
                 'volume': volume,
                 'spike': spike,
-                'ai_decision': ai_decision
+                'ai_decision': ai_decision,
+                'confidence': confidence
             })
             
             statsd.increment('crest.loud_event.audio_detected')
             
+            # Dynamic response based on confidence and spike magnitude
+            if confidence > 0.8:
+                level = 0.2  # Aggressive reduction for high confidence
+                duration = 4000
+            elif confidence > 0.6:
+                level = 0.3  # Moderate reduction for medium confidence
+                duration = 3000
+            else:
+                level = 0.5  # Light reduction for low confidence
+                duration = 2000
+            
             response_data = {
                 "action": "LOWER_VOLUME",
-                "level": 0.25,  # Lower volume more aggressively for audio spikes
-                "duration": 3000,  # Longer duration for audio events
-                "confidence": ai_decision,
+                "level": level,
+                "duration": duration,
+                "confidence": confidence,
                 "trigger": "audio_analysis",
+                "transition_type": "smooth",
                 "volume_data": {
                     "current": volume,
                     "baseline": baseline,
@@ -332,7 +507,7 @@ def handle_audio_data():
         else:
             response_data = {
                 "action": "NONE",
-                "confidence": ai_decision,
+                "confidence": confidence,
                 "trigger": "audio_analysis"
             }
         
@@ -354,17 +529,53 @@ def handle_audio_data():
         
         return jsonify({"error": "Internal server error"}), 500
 
+def calculate_audio_confidence(spike, volume, baseline, ai_decision):
+    """Calculate confidence level for audio-based decisions"""
+    
+    # Base confidence on spike magnitude
+    if spike > 0.5:
+        base_confidence = 0.95
+    elif spike > 0.4:
+        base_confidence = 0.85
+    elif spike > 0.3:
+        base_confidence = 0.75
+    elif spike > 0.2:
+        base_confidence = 0.6
+    else:
+        base_confidence = 0.4
+    
+    # Adjust based on absolute volume level
+    if volume > 0.8:
+        base_confidence += 0.05
+    elif volume < 0.3:
+        base_confidence -= 0.1
+    
+    # Adjust based on AI agreement with heuristics
+    heuristic_decision = 'YES' if spike > 0.25 else 'NO'
+    if ai_decision == heuristic_decision:
+        base_confidence += 0.1
+    else:
+        base_confidence -= 0.15
+    
+    return max(0.1, min(0.99, base_confidence))
+
 def analyze_audio_for_loud_events(volume, baseline, spike):
     """
-    Analyze audio data to determine if it represents a loud event.
-    Uses AI + heuristics for better accuracy.
+    Enhanced audio analysis with improved AI + heuristics and confidence calculation.
     """
-    # Get AI client
+    # Quick heuristic pre-filter for obvious cases
+    if spike < 0.1:
+        return 'NO', 0.9  # Very confident it's not loud
+    elif spike > 0.6:
+        return 'YES', 0.95  # Very confident it's loud
+    
+    # Get AI client for borderline cases
     client = get_truefoundry_client()
+    ai_decision = 'NO'
     
     if client and os.getenv("TRUEFOUNDRY_API_KEY"):
         try:
-            logger.info("Running audio analysis in LIVE mode", extra={
+            logger.info("Running enhanced audio analysis in LIVE mode", extra={
                 'volume': volume,
                 'baseline': baseline,
                 'spike': spike,
@@ -375,20 +586,31 @@ def analyze_audio_for_loud_events(volume, baseline, spike):
             
             ai_start_time = time.time()
             
-            # Create prompt for audio analysis
-            prompt = f"""Analyze this audio data for loud events:
-            Current Volume: {volume:.3f}
-            Baseline Volume: {baseline:.3f} 
-            Volume Spike: {spike:.3f}
-            
-            This represents real-time audio analysis. A spike > 0.3 usually indicates sudden loud sounds like explosions, gunshots, crashes, or dramatic music.
-            
-            Should the volume be lowered? Respond only with YES or NO."""
+            # Enhanced prompt with more context
+            spike_ratio = spike / baseline if baseline > 0 else spike
+            prompt = f"""Analyze this real-time YouTube audio data for loud events:
+
+Current Volume Level: {volume:.3f} (0.0 = silent, 1.0 = maximum)
+Baseline Volume: {baseline:.3f} (recent average)
+Volume Spike: {spike:.3f} (sudden increase)
+Spike Ratio: {spike_ratio:.2f}x above baseline
+
+Context: This is real-time audio analysis from a YouTube video. We want to detect sudden loud sounds like:
+- Explosions, gunshots, crashes (spike > 0.4)
+- Dramatic music swells (spike > 0.3 + high volume)
+- Sudden screaming/shouting (spike > 0.35)
+
+Avoid triggering on:
+- Gradual volume changes
+- Normal speech variations
+- Background music
+
+Should the volume be temporarily lowered? Respond only with YES or NO."""
             
             response = client.chat.completions.create(
                 model="openai-main/gpt-4o-mini",
                 messages=[{"role": "user", "content": prompt}],
-                max_tokens=10,
+                max_tokens=5,
                 temperature=0.1
             )
             
@@ -402,20 +624,19 @@ def analyze_audio_for_loud_events(volume, baseline, spike):
                 })
                 ai_decision = 'NO'
             
-            logger.info("OpenAI audio decision", extra={
+            logger.info("Enhanced OpenAI audio decision", extra={
                 'decision': ai_decision,
                 'ai_duration_ms': ai_duration * 1000,
                 'volume': volume,
-                'spike': spike
+                'spike': spike,
+                'spike_ratio': spike_ratio
             })
             
             statsd.histogram('crest.ai.duration', ai_duration, tags=['provider:truefoundry', 'type:audio'])
             statsd.increment(f'crest.openai.audio_decision.{ai_decision.lower()}', tags=['provider:truefoundry'])
             
-            return ai_decision
-            
         except Exception as e:
-            logger.error("OpenAI audio analysis failed", extra={
+            logger.error("Enhanced OpenAI audio analysis failed", extra={
                 'error': str(e),
                 'error_type': type(e).__name__,
                 'volume': volume,
@@ -427,33 +648,47 @@ def analyze_audio_for_loud_events(volume, baseline, spike):
                 'type:audio',
                 f'error_type:{type(e).__name__}'
             ])
+            
+            # Fallback to heuristic
+            ai_decision = 'YES' if spike > 0.3 else 'NO'
     
-    # Fallback to heuristic analysis
-    logger.info("Using heuristic audio analysis", extra={
-        'volume': volume,
-        'baseline': baseline,
-        'spike': spike,
-        'mode': 'heuristic'
-    })
-    
-    # Heuristic rules for loud events
-    if spike > 0.4:  # Very large spike
-        decision = 'YES'
-    elif spike > 0.25 and volume > 0.6:  # Medium spike with high volume
-        decision = 'YES'
     else:
-        decision = 'NO'
+        # No AI available - use enhanced heuristics
+        logger.info("Using enhanced heuristic audio analysis", extra={
+            'volume': volume,
+            'baseline': baseline,
+            'spike': spike,
+            'mode': 'heuristic'
+        })
+        
+        # Enhanced heuristic rules
+        spike_ratio = spike / baseline if baseline > 0.05 else spike / 0.05
+        
+        if spike > 0.4:  # Very large absolute spike
+            ai_decision = 'YES'
+        elif spike > 0.3 and volume > 0.6:  # Large spike with high volume
+            ai_decision = 'YES'
+        elif spike > 0.25 and spike_ratio > 3.0:  # Significant relative spike
+            ai_decision = 'YES'
+        else:
+            ai_decision = 'NO'
     
-    logger.info("Heuristic audio decision", extra={
-        'decision': decision,
+    # Calculate confidence level
+    confidence = calculate_audio_confidence(spike, volume, baseline, ai_decision)
+    
+    logger.info("Enhanced audio analysis completed", extra={
+        'decision': ai_decision,
+        'confidence': confidence,
         'volume': volume,
         'spike': spike,
-        'mode': 'heuristic'
+        'mode': 'ai_enhanced' if client else 'heuristic'
     })
     
-    statsd.increment(f'crest.heuristic_audio_decision.{decision.lower()}', tags=['mode:heuristic'])
+    statsd.increment(f'crest.enhanced_audio_decision.{ai_decision.lower()}', tags=[
+        'mode:ai_enhanced' if client else 'mode:heuristic'
+    ])
     
-    return decision
+    return ai_decision, confidence
 
 @app.route('/feedback', methods=['POST'])
 def handle_feedback():

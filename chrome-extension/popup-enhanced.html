@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            width: 380px;
+            min-height: 500px;
+            margin: 0;
+            padding: 16px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-size: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            margin: 5px 0 0 0;
+            font-size: 12px;
+            opacity: 0.8;
+        }
+
+        .status-section {
+            margin-bottom: 20px;
+        }
+
+        .status {
+            padding: 8px 12px;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+
+        .status.monitoring {
+            background: rgba(40, 167, 69, 0.2);
+            border: 1px solid rgba(40, 167, 69, 0.4);
+        }
+
+        .status.active {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            animation: pulse 2s infinite;
+        }
+
+        .status.error {
+            background: rgba(220, 53, 69, 0.2);
+            border: 1px solid rgba(220, 53, 69, 0.4);
+        }
+
+        .status.connected {
+            color: #28a745;
+            font-size: 12px;
+        }
+
+        .status.disconnected {
+            color: #dc3545;
+            font-size: 12px;
+        }
+
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+
+            50% {
+                opacity: 0.7;
+            }
+
+            100% {
+                opacity: 1;
+            }
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+        }
+
+        .metric-value {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .metric-label {
+            font-size: 11px;
+            opacity: 0.8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detailed-stats {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            backdrop-filter: blur(10px);
+        }
+
+        .detailed-stats h3 {
+            margin: 0 0 10px 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .stat-label {
+            opacity: 0.8;
+        }
+
+        .stat-value {
+            font-weight: 500;
+        }
+
+        .activity-section {
+            margin-bottom: 20px;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .activity-log {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 8px;
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            border-left: 3px solid transparent;
+        }
+
+        .log-entry.volume_adjustment {
+            background: rgba(40, 167, 69, 0.1);
+            border-left-color: #28a745;
+        }
+
+        .log-entry.error {
+            background: rgba(220, 53, 69, 0.1);
+            border-left-color: #dc3545;
+        }
+
+        .log-entry.test {
+            background: rgba(255, 193, 7, 0.1);
+            border-left-color: #ffc107;
+        }
+
+        .log-entry.system {
+            background: rgba(108, 117, 125, 0.1);
+            border-left-color: #6c757d;
+        }
+
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
+        .log-time {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+
+        .log-type {
+            font-size: 10px;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 2px 6px;
+            border-radius: 10px;
+            text-transform: uppercase;
+        }
+
+        .log-confidence {
+            font-size: 10px;
+            color: #28a745;
+            font-weight: 500;
+        }
+
+        .log-message {
+            line-height: 1.3;
+        }
+
+        .log-reasoning {
+            margin-top: 4px;
+            font-size: 11px;
+            opacity: 0.8;
+            font-style: italic;
+        }
+
+        .controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.2);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .scrollbar-custom::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+        }
+
+        .scrollbar-custom::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="header">
+        <h1>🎵 Crest AI Agent</h1>
+        <div class="subtitle">Intelligent Volume Management</div>
+        <div id="connection-status" class="status">🟡 Connecting...</div>
+    </div>
+
+    <div class="status-section">
+        <div id="status" class="status monitoring">🔍 Monitoring for loud events...</div>
+    </div>
+
+    <div class="metrics-grid">
+        <div class="metric-card">
+            <div id="adjustments-count" class="metric-value">0</div>
+            <div class="metric-label">Total Adjustments</div>
+        </div>
+        <div class="metric-card">
+            <div id="accuracy-rate" class="metric-value">100%</div>
+            <div class="metric-label">Accuracy Rate</div>
+        </div>
+    </div>
+
+    <div class="detailed-stats">
+        <h3>📊 Session Statistics</h3>
+        <div class="stat-row">
+            <span class="stat-label">Subtitle Detections:</span>
+            <span id="subtitle-count" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Audio Detections:</span>
+            <span id="audio-count" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">User Corrections:</span>
+            <span id="correction-count" class="stat-value">0</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Last Action:</span>
+            <span id="last-action" class="stat-value">--</span>
+        </div>
+        <div class="stat-row">
+            <span class="stat-label">Session Duration:</span>
+            <span id="session-duration" class="stat-value">0:00</span>
+        </div>
+    </div>
+
+    <div class="activity-section">
+        <div class="section-header">
+            <span class="section-title">📋 Activity Log</span>
+            <button id="refresh-data" class="btn btn-secondary" style="padding: 4px 8px; font-size: 10px;">↻</button>
+        </div>
+        <div id="activity-log" class="activity-log scrollbar-custom">
+            <div class="log-entry system">
+                <div class="log-header">
+                    <span class="log-time">--:--:--</span>
+                    <span class="log-type">system</span>
+                </div>
+                <div class="log-message">🚀 Dashboard initialized - waiting for activity...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="test-volume" class="btn btn-primary">🧪 Test Volume</button>
+        <button id="test-audio" class="btn btn-primary">🔊 Test Audio</button>
+        <button id="clear-log" class="btn btn-secondary">🗑️ Clear</button>
+    </div>
+
+    <script src="popup-enhanced.js"></script>
+</body>
+
+</html>
