@@ -51,7 +51,6 @@ project-crest/
 ├── requirements.txt       # Python dependencies
 ├── chrome-extension/      # Extension files
 ├── test_*.py             # Testing utilities
-├── .kiro/specs/          # Feature specifications
 └── docs/                 # Additional documentation
 ```
 

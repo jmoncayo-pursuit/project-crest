@@ -92,7 +92,6 @@ python test_server.py
 │   ├── service_worker.js    # Background coordination
 │   └── content-script-*.js  # YouTube page interaction
 ├── test_*.py                # Testing utilities
-├── .kiro/specs/             # Feature specifications
 └── requirements.txt         # Python dependencies
 ```
 

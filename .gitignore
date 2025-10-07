@@ -67,3 +67,6 @@ monitor_*.py
 
 # Datadog
 dd-trace-*
+
+# Development process files
+.kiro/
