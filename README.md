@@ -27,11 +27,12 @@ python app.py
 
 ### 3. Test on YouTube
 1. Go to any YouTube video
-2. The extension will automatically start monitoring
-3. **Watch the extension icon** - it turns green when actively managing volume
-4. **Click the extension icon** to see the live activity dashboard
-5. Look for "Crest Audio Agent" messages in browser console (F12)
-6. Loud events will trigger automatic volume reduction
+2. **Look for red notification** in top-right corner saying "🎵 CREST LOADED"
+3. **Check browser console** (F12) for "🚀 CREST TEST: Script loaded successfully!"
+4. **Wait 5 seconds** - volume will automatically drop to 20% (green notification)
+5. **After 3 more seconds** - volume restores to original level
+6. **Click extension icon** to see activity dashboard
+7. **Watch extension icon** - changes color when managing volume
 
 ## 🏗️ Architecture
 
@@ -48,23 +49,30 @@ python app.py
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Current Demo Mode
+The extension is currently in **test mode** and will:
+- Show visual notifications when loaded
+- Automatically test volume control after 5 seconds
+- Demonstrate the core volume adjustment functionality
+- Log all actions to browser console
+
+### Environment Variables (Optional)
 ```bash
-# TrueFoundry AI Gateway (optional)
+# TrueFoundry AI Gateway (for AI mode)
 TRUEFOUNDRY_API_KEY="tfy-..."
 TRUEFOUNDRY_BASE_URL="https://..."
 
-# Datadog Observability (optional)
+# Datadog Observability (for monitoring)
 DD_AGENT_HOST="localhost"
 DD_SERVICE="crest-agent"
 DD_ENV="development"
 ```
 
-### Extension Settings
-The extension automatically detects:
-- Audio volume spikes (>30% above baseline)
-- Subtitle-based loud events `[explosion]`, `[gunshot]`, etc.
-- User volume corrections for learning
+### Extension Capabilities
+- **Real-time volume control**: Immediate audio adjustment
+- **Visual feedback**: On-screen notifications and icon changes
+- **Activity logging**: Complete dashboard with action history
+- **Test mode**: Automatic demonstration of functionality
 
 ## 🧪 Testing
 
@@ -126,11 +134,11 @@ The Chrome extension includes a comprehensive dashboard accessible by clicking t
 ## 🔍 Troubleshooting
 
 ### Extension Not Working
-1. Check if server is running on port 5003
-2. Verify extension is loaded and enabled
-3. **Check extension dashboard** for activity logs
-4. Look for icon color changes (gray → green)
-5. Check browser console for error messages
+1. **No red notification?** - Extension not loading, check if it's enabled in `chrome://extensions/`
+2. **No console messages?** - Check browser console (F12) for errors
+3. **No volume change?** - Wait 5 seconds after page load, should happen automatically
+4. **Server connection issues?** - Check if Flask server is running on port 5003
+5. **Extension dashboard empty?** - Click extension icon, should show activity log
 
 ### Server Issues
 1. Check port 5003 isn't in use: `lsof -i :5003`
