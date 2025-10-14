@@ -1,23 +1,9 @@
 // service-worker.js
 
-// Icon state management - using simple colored squares as fallback
+// Icon state management
 const IconState = {
-    DEFAULT: {
-        "128": "data:image/svg+xml;base64," + btoa(`
-            <svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
-                <rect width="128" height="128" rx="20" fill="#6c757d"/>
-                <text x="64" y="80" text-anchor="middle" fill="white" font-size="48" font-family="Arial">C</text>
-            </svg>
-        `)
-    },
-    ACTIVE: {
-        "128": "data:image/svg+xml;base64," + btoa(`
-            <svg width="128" height="128" xmlns="http://www.w3.org/2000/svg">
-                <rect width="128" height="128" rx="20" fill="#28a745"/>
-                <text x="64" y="80" text-anchor="middle" fill="white" font-size="48" font-family="Arial">C</text>
-            </svg>
-        `)
-    }
+    DEFAULT: "icons/crest-inactive.png",
+    ACTIVE: "icons/crest-active.png"
 };
 
 // Track active tabs for icon management
@@ -120,13 +106,12 @@ chrome.runtime.onMessage.addListener((message, sender) => {
     return true;
 });
 
-// Icon management functions
+// Icon management functions - use badge instead of icon changes
 function setIconActive(tabId) {
     try {
-        chrome.action.setIcon({
-            path: IconState.ACTIVE,
-            tabId: tabId
-        });
+        // Change icon to green (active) version
+        chrome.action.setIcon({ path: IconState.ACTIVE });
+        console.log('🟢 Extension icon set to ACTIVE (green)');
         activeTabs.add(tabId);
     } catch (error) {
         console.error('Error setting active icon:', error);
@@ -135,10 +120,9 @@ function setIconActive(tabId) {
 
 function setIconDefault(tabId) {
     try {
-        chrome.action.setIcon({
-            path: IconState.DEFAULT,
-            tabId: tabId
-        });
+        // Change icon back to gray (default) version
+        chrome.action.setIcon({ path: IconState.DEFAULT });
+        console.log('⚪ Extension icon set to DEFAULT (gray)');
         activeTabs.delete(tabId);
     } catch (error) {
         console.error('Error setting default icon:', error);
